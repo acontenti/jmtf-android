@@ -26,105 +26,10 @@ public class JMTFImage {
 	
 	private ROI roi;
 
-	/**
-	 * defines a Region of Interest
-	 * @author Luca Rossetto
-	 *
-	 */
-	public class ROI implements Cloneable{
-		
-		public ROI(){
-			minX = 0;
-			minY = 0;
-			maxX = width - 1;
-			maxY = height - 1;
-		}
-		
-		@Override
-		public int hashCode() {
-			final int prime = 31;
-			int result = 1;
-			result = prime * result + getOuterType().hashCode();
-			result = prime * result + maxX;
-			result = prime * result + maxY;
-			result = prime * result + minX;
-			result = prime * result + minY;
-			return result;
-		}
-
-		@Override
-		public boolean equals(Object obj) {
-			if (this == obj) {
-				return true;
-			}
-			if (obj == null) {
-				return false;
-			}
-			if (getClass() != obj.getClass()) {
-				return false;
-			}
-			ROI other = (ROI) obj;
-			if (!getOuterType().equals(other.getOuterType())) {
-				return false;
-			}
-			if (maxX != other.maxX) {
-				return false;
-			}
-			if (maxY != other.maxY) {
-				return false;
-			}
-			if (minX != other.minX) {
-				return false;
-			}
-			if (minY != other.minY) {
-				return false;
-			}
-			return true;
-		}
-
-		public ROI(int minx, int maxx, int miny, int maxy){
-			minX = minx;
-			maxX = maxx;
-			minY = miny;
-			maxY = maxy;
-			
-		}
-		public int minX, maxX, minY, maxY;
-		
-		public ROI clone(){
-			return new ROI(minX, maxX, minY, maxY);
-		}
-
-		public int getWidth(){
-			return maxX - minX + 1;
-		}
-		
-		public int getHeight(){
-			return maxY - minY + 1;
-		}
-		
-		public int getNumberOfPixels(){
-			return getWidth() * getHeight();
-		}
-		
-		@Override
-		public String toString() {
-			return "(" + minX + ", " + minY + ") to (" + maxX + ", " + maxY + ")";
-		}
-
-		private JMTFImage getOuterType() {
-			return JMTFImage.this;
-		}
-
-
-		public boolean isInside(int x, int y) {
-			return x >= minX && x <= maxX && y >= minY && y <= maxY;
-		}
-	}
-
 	public JMTFImage(Bitmap bitmap) {
 		this.height = bitmap.getHeight();
 		this.width = bitmap.getWidth();
+		this.pixels = new int[bitmap.getByteCount() / 4];
 		bitmap.getPixels(pixels, 0, width, 0, 0, width, height);
 		this.roi = new ROI();
 	}
@@ -140,6 +45,7 @@ public class JMTFImage {
 		this.pixels = new int[this.width * this.height];
 		this.roi = new ROI();
 	}
+
 	/**
 	 * Creates a JMTFImage with specified dimensions and specified grayscale flag
 	 * @param width width of the new image
@@ -150,7 +56,6 @@ public class JMTFImage {
 		this(width, height);
 		this.isGrayscale = isGrayScale;
 	}
-	
 	/**
 	 * Creates a JMTFImage with specified dimensions, specified grayscale flag and an id
 	 * @param width width of the new image
@@ -177,12 +82,67 @@ public class JMTFImage {
 	}
 	
 	/**
+	 * Extracts the red-channel form a pixelvalue
+	 * @param color the pixelvalue
+	 * @return the red channel
+	 */
+	public static int getRed(int color) {
+		return (color >> 16 & 0xFF);
+	}
+
+	/**
+	 * Extracts the green-channel form a pixelvalue
+	 *
+	 * @param color the pixelvalue
+	 * @return the green channel
+	 */
+	public static int getGreen(int color) {
+		return (color >> 8 & 0xFF);
+	}
+
+	/**
+	 * Extracts the blue-channel form a pixelvalue
+	 *
+	 * @param color the pixelvalue
+	 * @return the blue channel
+	 */
+	public static int getBlue(int color) {
+		return (color & 0xFF);
+	}
+
+	/**
+	 * Combines red, green and blue channel to a pixelvalue
+	 *
+	 * @param red
+	 * @param green
+	 * @param blue
+	 * @return the pixelvalue
+	 */
+	public static int getColor(int red, int green, int blue) {
+		return (blue & 0xFF) | ((green & 0xFF) << 8) | ((red & 0xFF) << 16);
+	}
+
+	/**
+	 * Calculates (r1-r2)*(r1-r2) + (g1-g2)*(g1-g2) + (b1-b2)*(b1-b2)
+	 *
+	 * @param color1
+	 * @param color2
+	 * @return the squared euclidean distance between color1 and color2
+	 */
+	public static int squaredColorDistance(int color1, int color2) {
+		int r1 = JMTFImage.getRed(color1), g1 = JMTFImage.getGreen(color1), b1 = JMTFImage.getBlue(color1);
+		int r2 = JMTFImage.getRed(color2), g2 = JMTFImage.getGreen(color2), b2 = JMTFImage.getBlue(color2);
+		return (r1 - r2) * (r1 - r2) + (g1 - g2) * (g1 - g2) + (b1 - b2) * (b1 - b2);
+	}
+
+	/**
 	 * returns the grayscale-flag
 	 * @return true if it is a grayscaleimage
 	 */
 	public boolean isGrayscale() {
 		return isGrayscale;
 	}
+
 	/**
 	 * sets the graysclae-flag
 	 * @param isGreyscale flag
@@ -190,12 +150,21 @@ public class JMTFImage {
 	public void setGrayscale(boolean isGreyscale) {
 		this.isGrayscale = isGreyscale;
 	}
+
 	/**
 	 * Returns an int-Array containing all the Pixelvalues
 	 * @return array with Pixelvalues
 	 */
-	public int[] getPixels(){
+	public int[] getPixels() {
 		return this.pixels;
+	}
+
+	/**
+	 * Sets a new pixel-array
+	 * @param pixels new pixel array
+	 */
+	public void setPixels(int[] pixels) {
+		this.pixels = pixels;
 	}
 	
 	/**
@@ -226,50 +195,6 @@ public class JMTFImage {
 		if(pos < this.pixels.length){
 			this.pixels[pos] = color;
 		}
-	}
-	/**
-	 * Sets a new pixel-array
-	 * @param pixels new pixel array
-	 */
-	public void setPixels(int[] pixels) {
-		this.pixels = pixels;
-	}
-	/**
-	 * Extracts the red-channel form a pixelvalue
-	 * @param color the pixelvalue
-	 * @return the red channel
-	 */
-	public static int getRed(int color){
-		return (color >> 16 & 0xFF);
-	}
-	
-	/**
-	 * Extracts the green-channel form a pixelvalue
-	 * @param color the pixelvalue
-	 * @return the green channel
-	 */
-	public static int getGreen(int color){
-		return (color >> 8 & 0xFF);
-	}
-	
-	/**
-	 * Extracts the blue-channel form a pixelvalue
-	 * @param color the pixelvalue
-	 * @return the blue channel
-	 */
-	public static int getBlue(int color){
-		return (color & 0xFF);
-	}
-	
-	/**
-	 * Combines red, green and blue channel to a pixelvalue
-	 * @param red
-	 * @param green
-	 * @param blue
-	 * @return the pixelvalue
-	 */
-	public static int getColor(int red, int green, int blue){
-		return (blue & 0xFF) | ((green & 0xFF) << 8) | ((red & 0xFF) << 16);
 	}
 	
 	/**
@@ -404,22 +329,11 @@ public class JMTFImage {
 		this.roi = new ROI();
 	}
 	
-	/**
-	 * Calculates (r1-r2)*(r1-r2) + (g1-g2)*(g1-g2) + (b1-b2)*(b1-b2)
-	 * @param color1
-	 * @param color2
-	 * @return the squared euclidean distance between color1 and color2
-	 */
-	public static int squaredColorDistance(int color1, int color2){
-		int r1 = JMTFImage.getRed(color1), g1 = JMTFImage.getGreen(color1), b1 = JMTFImage.getBlue(color1);
-		int r2 = JMTFImage.getRed(color2), g2 = JMTFImage.getGreen(color2), b2 = JMTFImage.getBlue(color2);
-		return (r1-r2)*(r1-r2) + (g1-g2)*(g1-g2) + (b1-b2)*(b1-b2);
-	}
-	
 	@Override
 	protected JMTFImage clone(){
 		return this.copy();
 	}
+	
 	@Override
 	public int hashCode() {
 		final int prime = 31;
@@ -433,6 +347,7 @@ public class JMTFImage {
 		result = prime * result + width;
 		return result;
 	}
+
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj) {
@@ -471,16 +386,108 @@ public class JMTFImage {
 		} else if (!roi.equals(other.roi)) {
 			return false;
 		}
-		if (width != other.width) {
-			return false;
-		}
-		return true;
+		return width == other.width;
 	}
+
 	/**
 	 * @return
 	 */
 	public boolean isEmpty() {
 		return this.width == 0 || this.height == 0;
+	}
+
+	/**
+	 * defines a Region of Interest
+	 *
+	 * @author Luca Rossetto
+	 */
+	public class ROI implements Cloneable {
+
+		public int minX, maxX, minY, maxY;
+
+		public ROI() {
+			minX = 0;
+			minY = 0;
+			maxX = width - 1;
+			maxY = height - 1;
+		}
+
+		public ROI(int minx, int maxx, int miny, int maxy) {
+			minX = minx;
+			maxX = maxx;
+			minY = miny;
+			maxY = maxy;
+
+		}
+
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + getOuterType().hashCode();
+			result = prime * result + maxX;
+			result = prime * result + maxY;
+			result = prime * result + minX;
+			result = prime * result + minY;
+			return result;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj) {
+				return true;
+			}
+			if (obj == null) {
+				return false;
+			}
+			if (getClass() != obj.getClass()) {
+				return false;
+			}
+			ROI other = (ROI) obj;
+			if (!getOuterType().equals(other.getOuterType())) {
+				return false;
+			}
+			if (maxX != other.maxX) {
+				return false;
+			}
+			if (maxY != other.maxY) {
+				return false;
+			}
+			if (minX != other.minX) {
+				return false;
+			}
+			return minY == other.minY;
+		}
+
+		public ROI clone() {
+			return new ROI(minX, maxX, minY, maxY);
+		}
+
+		public int getWidth() {
+			return maxX - minX + 1;
+		}
+
+		public int getHeight() {
+			return maxY - minY + 1;
+		}
+
+		public int getNumberOfPixels() {
+			return getWidth() * getHeight();
+		}
+
+		@Override
+		public String toString() {
+			return "(" + minX + ", " + minY + ") to (" + maxX + ", " + maxY + ")";
+		}
+
+		private JMTFImage getOuterType() {
+			return JMTFImage.this;
+		}
+
+
+		public boolean isInside(int x, int y) {
+			return x >= minX && x <= maxX && y >= minY && y <= maxY;
+		}
 	}
 	
 	
