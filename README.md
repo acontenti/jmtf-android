@@ -12,5 +12,5 @@ Fork of "jmtf" library by Luca Rossetto
 	}
 	
 	dependencies {
-	        compile 'com.github.acontenti:jmtf-android:1.0'
+	        compile 'com.github.acontenti:jmtf-android:1.1'
 	}
